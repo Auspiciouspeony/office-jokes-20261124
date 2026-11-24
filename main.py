@@ -1,52 +1,36 @@
-"""office-jokes-20261124 — program/v1 entry.
+#!/usr/bin/env python3
+"""Office-jokes entry: write one joke line to /output/entry.txt.
 
-One fixed one-line joke about office life, written to entry.txt in the
-output directory. The grader reads exactly the bytes written: no trailing
-newline, no second line.
-
-    mkdir -p out && MAKEFUN_OUTPUT_DIR=out python3 -P -s main.py
-
-Deterministic: a single constant string; no randomness, no network,
-no clock. Python 3.13, standard library only.
+The joke is a single line of UTF-8 text with no trailing newline.
+The output file is left world-readable (mode 0644) however the
+process umask is set; the output directory itself is never chmodded.
 """
 
 import os
-from pathlib import Path
+import sys
 
-# Two beats in one line. The setup names the office's most dreaded button
-# — reply-all — and the complaint itself becomes the thing complained
-# about: Legal, replying-all, turns the plea into company policy.
-# Recognition (reply-all), surprise (it becomes policy), tight, fresh.
-# v2: dropped "to say" — the colon lands the punchline faster.
-JOKE = (
-    "I hit reply-all asking everyone to stop replying all. "
-    "Legal replied-all: my email is now company policy."
-)
+JOKE = "I told HR I was burnt out. They gave me a scented candle and a resilience webinar."
+OUT_DIR = "/output"
+OUT_FILE = "/output/entry.txt"
 
 
-def _best_effort_chmod(path: Path, mode: int) -> None:
-    """Chmod when the path is ours; never fail the run when it is not.
-
-    In the grader the output directory is mounted by the grader and not
-    owned by us, so chmod there raises PermissionError. The entry file
-    itself is created by us, so its own chmod still applies.
-    """
+def main() -> int:
     try:
-        path.chmod(mode)
+        os.makedirs(OUT_DIR, exist_ok=True)
     except OSError:
         pass
-
-
-def run(output_dir: Path) -> int:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    _best_effort_chmod(output_dir, 0o755)
-    entry = output_dir / "entry.txt"
-    entry.write_text(JOKE, encoding="utf-8")
-    # Outputs are collected by another user than the one running this
-    # program, so the file must be world-readable.
-    entry.chmod(0o644)
+    data = JOKE.encode("utf-8")
+    fd = os.open(OUT_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+    try:
+        os.write(fd, data)
+    finally:
+        os.close(fd)
+    try:
+        os.chmod(OUT_FILE, 0o644)
+    except OSError:
+        pass
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(run(Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"))))
+    sys.exit(main())
